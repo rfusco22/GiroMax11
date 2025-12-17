@@ -226,8 +226,32 @@ export async function getKYCByUserId(userId: string): Promise<KYCVerification | 
 
 export async function getPendingKYCVerifications(): Promise<KYCVerification[]> {
   try {
-    const verifications = await query<KYCVerification>(
-      `SELECT k.*, u.email, u.name as user_name
+    const verifications = await query<any>(
+      `SELECT 
+        k.id,
+        k.user_id as userId,
+        k.first_name as firstName,
+        k.last_name as lastName,
+        k.date_of_birth as dateOfBirth,
+        k.nationality,
+        k.residence_country as residenceCountry,
+        k.document_type as documentType,
+        k.document_number as documentNumber,
+        k.phone_number as phoneNumber,
+        k.phone_verified as phoneVerified,
+        k.document_front_url as documentFrontUrl,
+        k.document_back_url as documentBackUrl,
+        k.selfie_url as selfieUrl,
+        k.selfie_with_document_url as selfieWithDocumentUrl,
+        k.status,
+        k.created_at as createdAt,
+        k.updated_at as updatedAt,
+        k.reviewed_by as reviewedBy,
+        k.reviewed_at as reviewedAt,
+        k.rejection_reason as rejectionReason,
+        k.notes,
+        u.email,
+        CONCAT(k.first_name, ' ', k.last_name) as name
        FROM kyc_verifications k
        JOIN users u ON k.user_id = u.id
        WHERE k.status = 'pending'

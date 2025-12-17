@@ -48,6 +48,7 @@ export default function VerificacionesPage() {
   const [approvalNotes, setApprovalNotes] = useState("")
   const [rejectionReason, setRejectionReason] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; title: string } | null>(null)
 
   useEffect(() => {
     loadVerifications()
@@ -106,6 +107,23 @@ export default function VerificacionesPage() {
     setRejectionReason("")
     setIsProcessing(false)
     loadVerifications()
+  }
+
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return "Fecha no disponible"
+    try {
+      const dateObj = typeof date === "string" ? new Date(date) : date
+      if (isNaN(dateObj.getTime())) return "Fecha inválida"
+      return dateObj.toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch {
+      return "Fecha inválida"
+    }
   }
 
   if (isLoading) {
@@ -204,7 +222,9 @@ export default function VerificacionesPage() {
                         <div>
                           <p className="text-muted-foreground">Documento</p>
                           <p className="font-medium">
-                            {kyc.documentType} - {kyc.documentNumber}
+                            {kyc.documentType && kyc.documentNumber
+                              ? `${kyc.documentType.toUpperCase()} - ${kyc.documentNumber}`
+                              : "No especificado"}
                           </p>
                         </div>
                       </div>
@@ -212,14 +232,14 @@ export default function VerificacionesPage() {
                         <Phone className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="text-muted-foreground">Teléfono</p>
-                          <p className="font-medium">{kyc.phoneNumber}</p>
+                          <p className="font-medium">{kyc.phoneNumber || "No especificado"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="text-muted-foreground">Nacionalidad</p>
-                          <p className="font-medium">{kyc.nationality}</p>
+                          <p className="font-medium">{kyc.nationality || "No especificado"}</p>
                         </div>
                       </div>
                     </div>
@@ -227,7 +247,7 @@ export default function VerificacionesPage() {
                     {/* Submitted date */}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      Enviado: {new Date(kyc.createdAt).toLocaleString("es-ES")}
+                      Enviado: {formatDate(kyc.createdAt)}
                     </div>
                   </div>
 
@@ -308,23 +328,23 @@ export default function VerificacionesPage() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Tipo de Documento</Label>
-                    <p className="font-medium">{selectedKYC.documentType}</p>
+                    <p className="font-medium">{selectedKYC.documentType?.toUpperCase() || "No especificado"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Número de Documento</Label>
-                    <p className="font-medium">{selectedKYC.documentNumber}</p>
+                    <p className="font-medium">{selectedKYC.documentNumber || "No especificado"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Nacionalidad</Label>
-                    <p className="font-medium">{selectedKYC.nationality}</p>
+                    <p className="font-medium">{selectedKYC.nationality || "No especificado"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">País de Residencia</Label>
-                    <p className="font-medium">{selectedKYC.residenceCountry}</p>
+                    <p className="font-medium">{selectedKYC.residenceCountry || "No especificado"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Teléfono</Label>
-                    <p className="font-medium">{selectedKYC.phoneNumber}</p>
+                    <p className="font-medium">{selectedKYC.phoneNumber || "No especificado"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Estado del Teléfono</Label>
@@ -335,46 +355,68 @@ export default function VerificacionesPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {selectedKYC.selfieUrl && (
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Selfie</Label>
-                    <div className="border rounded-lg overflow-hidden bg-gray-50">
-                      <img
-                        src={selectedKYC.selfieUrl || "/placeholder.svg?height=300&width=400"}
-                        alt="Selfie"
-                        className="w-full h-auto"
-                      />
+              <div className="space-y-4">
+                <h3 className="font-semibold">Documentos Subidos</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {selectedKYC.selfieUrl && (
+                    <div className="space-y-2">
+                      <Label className="font-semibold">1. Foto de tu rostro</Label>
+                      <div
+                        className="border rounded-lg overflow-hidden bg-gray-50 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setZoomedImage({ url: selectedKYC.selfieUrl!, title: "Foto de tu rostro" })}
+                      >
+                        <img src={selectedKYC.selfieUrl || "/placeholder.svg"} alt="Selfie" className="w-full h-auto" />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">Click para ampliar</p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {selectedKYC.documentFrontUrl && (
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Documento (Cédula/Licencia/Pasaporte)</Label>
-                    <div className="border rounded-lg overflow-hidden bg-gray-50">
-                      <img
-                        src={selectedKYC.documentFrontUrl || "/placeholder.svg?height=300&width=400"}
-                        alt="Documento"
-                        className="w-full h-auto"
-                      />
+                  {selectedKYC.documentFrontUrl && (
+                    <div className="space-y-2">
+                      <Label className="font-semibold">2. Foto del Documento</Label>
+                      <div
+                        className="border rounded-lg overflow-hidden bg-gray-50 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() =>
+                          setZoomedImage({ url: selectedKYC.documentFrontUrl!, title: "Foto del Documento" })
+                        }
+                      >
+                        <img
+                          src={selectedKYC.documentFrontUrl || "/placeholder.svg"}
+                          alt="Documento"
+                          className="w-full h-auto"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">Click para ampliar</p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {selectedKYC.selfieWithDocumentUrl && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="font-semibold">Selfie con Documento</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Verifica que la cara y el documento sean visibles y coincidan con los datos proporcionados
-                    </p>
-                    <div className="border rounded-lg overflow-hidden bg-gray-50 max-w-md mx-auto">
-                      <img
-                        src={selectedKYC.selfieWithDocumentUrl || "/placeholder.svg?height=400&width=400"}
-                        alt="Selfie con Documento"
-                        className="w-full h-auto"
-                      />
+                  {selectedKYC.selfieWithDocumentUrl && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="font-semibold">3. Selfie con Documento</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Verifica que la cara y el documento sean visibles y coincidan con los datos proporcionados
+                      </p>
+                      <div
+                        className="border rounded-lg overflow-hidden bg-gray-50 max-w-md mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() =>
+                          setZoomedImage({ url: selectedKYC.selfieWithDocumentUrl!, title: "Selfie con Documento" })
+                        }
+                      >
+                        <img
+                          src={selectedKYC.selfieWithDocumentUrl || "/placeholder.svg"}
+                          alt="Selfie con Documento"
+                          className="w-full h-auto"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">Click para ampliar</p>
                     </div>
+                  )}
+                </div>
+
+                {!selectedKYC.selfieUrl && !selectedKYC.documentFrontUrl && !selectedKYC.selfieWithDocumentUrl && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No se han subido documentos aún</p>
                   </div>
                 )}
               </div>
@@ -402,6 +444,22 @@ export default function VerificacionesPage() {
             >
               <CheckCircle className="mr-2 h-4 w-4" />
               Aprobar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={zoomedImage !== null} onOpenChange={() => setZoomedImage(null)}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{zoomedImage?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[calc(90vh-120px)]">
+            <img src={zoomedImage?.url || "/placeholder.svg"} alt={zoomedImage?.title} className="w-full h-auto" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setZoomedImage(null)}>
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
