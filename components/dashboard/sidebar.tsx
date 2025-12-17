@@ -2,13 +2,27 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, User, Wallet, ArrowLeftRight, History, PlusCircle, LogOut } from "lucide-react"
+import {
+  LayoutDashboard,
+  User,
+  Wallet,
+  ArrowLeftRight,
+  History,
+  PlusCircle,
+  LogOut,
+  Users,
+  CheckCircle,
+  TrendingUp,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { logout } from "@/app/actions/auth"
 import { AnimatedLogo } from "./animated-logo"
 import { VerificationStatusBadge } from "./verification-status-badge"
+import { useEffect, useState } from "react"
+import { getCurrentUser } from "@/app/actions/auth"
+import type { User as UserType } from "@/lib/auth"
 
-const menuItems = [
+const clientMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: User, label: "Mi Perfil", href: "/dashboard/perfil" },
   { icon: Wallet, label: "Cuentas", href: "/dashboard/cuentas" },
@@ -17,8 +31,33 @@ const menuItems = [
   { icon: PlusCircle, label: "Crear Transacción", href: "/dashboard/crear-transaccion" },
 ]
 
+const adminMenuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
+  { icon: CheckCircle, label: "Verificaciones", href: "/admin/verificaciones" },
+  { icon: Users, label: "Crear Usuario", href: "/admin/usuarios/crear" },
+  { icon: TrendingUp, label: "Márgenes", href: "/admin/margenes" },
+  { icon: User, label: "Mi Perfil", href: "/dashboard/perfil" },
+]
+
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const [user, setUser] = useState<UserType | null>(null)
+  const [menuItems, setMenuItems] = useState(clientMenuItems)
+
+  useEffect(() => {
+    async function loadUser() {
+      const result = await getCurrentUser()
+      if (result.user) {
+        setUser(result.user)
+        if (result.user.role === "administrador" || result.user.role === "gerencia") {
+          setMenuItems(adminMenuItems)
+        } else {
+          setMenuItems(clientMenuItems)
+        }
+      }
+    }
+    loadUser()
+  }, [])
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-[#121A56] border-r border-white/10">
@@ -29,9 +68,11 @@ export function DashboardSidebar() {
             <AnimatedLogo />
             <span className="text-white font-bold italic text-xl tracking-wide">GIROS MAX</span>
           </div>
-          <div className="w-full flex justify-center mb-2">
-            <VerificationStatusBadge />
-          </div>
+          {user?.role === "cliente" && (
+            <div className="w-full flex justify-center mb-2">
+              <VerificationStatusBadge />
+            </div>
+          )}
         </div>
 
         {/* Navigation */}

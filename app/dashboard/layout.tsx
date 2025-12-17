@@ -15,6 +15,10 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
+  if (session.user.role === "administrador" || session.user.role === "gerencia") {
+    redirect("/admin")
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <DashboardSidebar />
