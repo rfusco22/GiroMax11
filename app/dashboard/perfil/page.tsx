@@ -1,18 +1,17 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter, redirect } from "next/navigation"
 import { Loader2, User, Lock, Bell, LinkIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCurrentUser, requestProfileUpdate } from "@/app/actions/auth"
-import { uploadDocumentFile, getUserKYC, getOrCreateKYC, getUserProfile } from "@/app/actions/kyc"
+import { uploadDocumentFile, getUserKYC, getOrCreateKYC } from "@/app/actions/kyc"
 import { cn } from "@/lib/utils"
-import SeguridadTab from "@/app/dashboard/perfil/seguridadTab"
-import NotificacionesTab from "@/app/dashboard/perfil/notificacionesTab"
-import ConexionesTab from "@/app/dashboard/perfil/conexionesTab"
-import MisDatosTab from "@/app/dashboard/perfil/misDatosTab"
+import SeguridadTab from "./seguridadTab"
+import NotificacionesTab from "./notificacionesTab"
+import ConexionesTab from "./conexionesTab"
+import MisDatosTab from "./misDatosTab"
 
 interface UserData {
   id: string
@@ -106,48 +105,75 @@ export default function PerfilPage() {
           redirect("/auth/login")
         }
 
-        // Load user data from database
-        const result = await getUserProfile()
+        const user = session
 
-        if (result.error) {
-          setError(result.error)
+        if (!user) {
+          setError("No se pudo cargar el perfil")
           return
         }
 
-        setUserData(result.user!)
-        setVerificationStatus(result.user?.kycStatus || "none")
-        setFormData({
-          firstName: result.user?.firstName || "",
-          lastName: result.user?.lastName || "",
-          email: result.user?.email || "",
-          phone: result.user?.phone || "",
-          dateOfBirth: result.user?.dateOfBirth || "",
-          nationality: result.user?.nationality || "VE",
-          residenceCountry: result.user?.residenceCountry || "VE",
-          documentType: result.user?.documentType || "cedula",
-          documentNumber: result.user?.documentNumber || "",
-        })
+        const nameParts = user.name?.split(" ") || []
+        const firstName = nameParts[0] || ""
+        const lastName = nameParts.slice(1).join(" ") || ""
 
-        if (result.user?.avatarUrl) {
-          setProfilePhotoPreview(result.user.avatarUrl)
+        const phoneWithoutPrefix = user.phone?.includes(":") ? user.phone.split(":")[1] : user.phone || ""
+
+        let formattedDateOfBirth = ""
+        if (user.dateOfBirth) {
+          try {
+            formattedDateOfBirth = new Date(user.dateOfBirth).toISOString().split("T")[0]
+          } catch (e) {
+            console.error("[v0] Error formatting date of birth:", e)
+          }
         }
 
-        // Load KYC data to get document images
+        setUserData({
+          id: user.id,
+          email: user.email,
+          name: user.name || "",
+          firstName,
+          lastName,
+          phone: user.phone,
+          country: user.country,
+          documentType: user.documentType,
+          documentNumber: user.documentNumber,
+          nationality: user.nationality,
+          residenceCountry: user.residenceCountry,
+          kycStatus: user.kycStatus,
+          kycVerifiedAt: user.kycVerifiedAt,
+          avatarUrl: user.avatarUrl,
+          dateOfBirth: user.dateOfBirth,
+        })
+
+        setVerificationStatus(user.kycStatus || "none")
+        setFormData({
+          firstName,
+          lastName,
+          email: user.email || "",
+          phone: phoneWithoutPrefix,
+          dateOfBirth: formattedDateOfBirth,
+          nationality: user.nationality || "VE",
+          residenceCountry: user.residenceCountry || "VE",
+          documentType: user.documentType || "cedula",
+          documentNumber: user.documentNumber || "",
+        })
+
+        if (user.avatarUrl) {
+          setProfilePhotoPreview(user.avatarUrl)
+        }
+
         const kycResult = await getUserKYC()
 
         if (kycResult.kyc) {
           console.log("[v0] KYC Data available:", kycResult.kyc)
           setKycData(kycResult.kyc)
 
-          // Only load existing photos if status is pending or approved
-          // If rejected, clear photos to allow new uploads
           if (kycResult.kyc.status === "rejected") {
             console.log("[v0] KYC rejected, clearing photos for re-upload")
             setSelfiePreview(null)
             setDocumentPhotoPreview(null)
             setSelfieWithDocumentPreview(null)
           } else {
-            // Load existing photos for pending or approved statuses
             if (kycResult.kyc.selfieUrl) {
               setSelfiePreview(kycResult.kyc.selfieUrl)
             }
@@ -169,78 +195,6 @@ export default function PerfilPage() {
 
     loadProfileData()
   }, [])
-
-  async function loadUserData() {
-    try {
-      const user = await getCurrentUser()
-      console.log("[v0] User loaded:", user)
-      if (!user) {
-        router.push("/login")
-        return
-      }
-
-      setUserData(user)
-      if (user.avatarUrl) {
-        setProfilePhotoPreview(user.avatarUrl)
-      }
-
-      const kycResult = await getUserKYC()
-      console.log("[v0] KYC Result:", kycResult)
-
-      // Split the name into firstName and lastName
-      const nameParts = user.name?.split(" ") || []
-      const firstName = nameParts[0] || ""
-      const lastName = nameParts.slice(1).join(" ") || ""
-
-      // Extract phone number without country code prefix
-      const phoneWithoutPrefix = user.phone?.includes(":") ? user.phone.split(":")[1] : user.phone || ""
-
-      // Format date of birth if it exists
-      let formattedDateOfBirth = ""
-      if (user.dateOfBirth) {
-        try {
-          formattedDateOfBirth = new Date(user.dateOfBirth).toISOString().split("T")[0]
-        } catch (e) {
-          console.error("[v0] Error formatting date of birth:", e)
-        }
-      }
-
-      // Load data primarily from users table with fallbacks
-      const profileData = {
-        firstName: firstName,
-        lastName: lastName,
-        phone: phoneWithoutPrefix,
-        dateOfBirth: formattedDateOfBirth,
-        nationality: user.nationality || user.country || "",
-        residenceCountry: user.residenceCountry || user.country || "",
-        documentType: user.documentType || "",
-        documentNumber: user.documentNumber || "",
-      }
-
-      console.log("[v0] Setting editedData with fallbacks:", profileData)
-      setEditedData(profileData)
-
-      // Load KYC data for document images if available
-      if (kycResult.kyc) {
-        console.log("[v0] KYC Data available for documents:", kycResult.kyc)
-        setKycData(kycResult.kyc)
-
-        if (kycResult.kyc.selfieUrl) {
-          setSelfiePreview(kycResult.kyc.selfieUrl)
-        }
-        if (kycResult.kyc.documentFrontUrl) {
-          setDocumentPhotoPreview(kycResult.kyc.documentFrontUrl)
-        }
-        if (kycResult.kyc.selfieWithDocumentUrl) {
-          setSelfieWithDocumentPreview(kycResult.kyc.selfieWithDocumentUrl)
-        }
-      }
-    } catch (error) {
-      console.error("[v0] Error loading user data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function handleProfilePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -316,27 +270,20 @@ export default function PerfilPage() {
         return
       }
 
-      // Reload user data to get the new KYC ID
-      await loadUserData()
-
-      // Get the updated KYC data
       const kycResult = await getUserKYC()
       if (kycResult.error || !kycResult.kyc?.id) {
         setUploadError("Error al crear la verificación KYC")
         return
       }
 
-      // Update local kycData state
       setKycData(kycResult.kyc)
 
-      // Use the new KYC ID for uploads
       const newKycId = kycResult.kyc.id
 
       setUploading(true)
       setUploadError(null)
 
       try {
-        // Upload new documents
         if (selfie) {
           const selfieFormData = new FormData()
           selfieFormData.append("file", selfie)
@@ -364,7 +311,10 @@ export default function PerfilPage() {
           if (selfieDocResult.error) throw new Error(selfieDocResult.error)
         }
 
-        await loadUserData()
+        const updatedKycResult = await getUserKYC()
+        if (updatedKycResult.kyc) {
+          setKycData(updatedKycResult.kyc)
+        }
         alert("Documentos actualizados exitosamente")
       } catch (err: any) {
         setUploadError(err.message || "Error al subir los documentos")
@@ -379,7 +329,6 @@ export default function PerfilPage() {
     setUploadError(null)
 
     try {
-      // Upload new documents only if they were changed
       if (selfie) {
         const selfieFormData = new FormData()
         selfieFormData.append("file", selfie)
@@ -407,7 +356,10 @@ export default function PerfilPage() {
         if (selfieDocResult.error) throw new Error(selfieDocResult.error)
       }
 
-      await loadUserData()
+      const updatedKycResult = await getUserKYC()
+      if (updatedKycResult.kyc) {
+        setKycData(updatedKycResult.kyc)
+      }
       alert("Documentos actualizados exitosamente")
     } catch (err: any) {
       setUploadError(err.message || "Error al subir los documentos")
