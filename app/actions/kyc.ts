@@ -272,3 +272,68 @@ export async function submitKYCForReview(kycId: string) {
     return { error: "Error al enviar para revisión" }
   }
 }
+
+export async function getOrCreateKYC() {
+  try {
+    const session = await getSession()
+    if (!session) {
+      return { error: "No autenticado" }
+    }
+
+    // Check if KYC already exists
+    const kyc = await getKYCByUserId(session.user.id)
+
+    if (kyc) {
+      return { success: true, kycId: kyc.id }
+    }
+
+    // Get user data from database to create KYC
+    const { query: dbQuery } = await import("@/lib/db")
+    const user = await dbQuery(
+      `SELECT name, date_of_birth, document_type, document_number, nationality, residence_country, phone 
+       FROM users WHERE id = ?`,
+      [session.user.id],
+    )
+
+    if (!user || user.length === 0) {
+      return { error: "Usuario no encontrado" }
+    }
+
+    const userData = user[0]
+
+    // Split name into first and last name
+    const nameParts = (userData.name || "").trim().split(" ")
+    const firstName = nameParts[0] || ""
+    const lastName = nameParts.slice(1).join(" ") || ""
+
+    // Validate required fields
+    if (!firstName || !userData.date_of_birth || !userData.document_type || !userData.document_number) {
+      return { error: "Faltan datos del perfil. Por favor completa tu información personal primero." }
+    }
+
+    // Extract phone number without country code
+    const phoneNumber = userData.phone?.includes(":") ? userData.phone.split(":")[1] : userData.phone || ""
+
+    // Create KYC verification
+    const result = await createKYCVerification({
+      userId: session.user.id,
+      firstName,
+      lastName,
+      dateOfBirth: new Date(userData.date_of_birth),
+      nationality: userData.nationality || "VE",
+      residenceCountry: userData.residence_country || "VE",
+      documentType: userData.document_type,
+      documentNumber: userData.document_number,
+      phoneNumber,
+    })
+
+    if (!result.success) {
+      return { error: result.error }
+    }
+
+    return { success: true, kycId: result.kycId }
+  } catch (error) {
+    console.error("[v0] Error getting or creating KYC:", error)
+    return { error: "Error al crear la verificación KYC" }
+  }
+}

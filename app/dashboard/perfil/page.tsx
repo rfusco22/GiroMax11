@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { getCurrentUser, updatePassword, requestProfileUpdate } from "@/app/actions/auth"
-import { uploadDocumentFile, getUserKYC } from "@/app/actions/kyc"
+import { uploadDocumentFile, getUserKYC, getOrCreateKYC } from "@/app/actions/kyc"
 import { cn } from "@/lib/utils"
 
 interface UserData {
@@ -241,7 +241,70 @@ export default function PerfilPage() {
 
   async function handleSubmitDocuments() {
     if (!kycData?.id) {
-      setUploadError("No se encontró la verificación KYC")
+      console.log("[v0] No KYC found, creating new KYC verification...")
+      const createResult = await getOrCreateKYC()
+
+      if (createResult.error) {
+        setUploadError(createResult.error)
+        return
+      }
+
+      // Reload user data to get the new KYC ID
+      await loadUserData()
+
+      // Get the updated KYC data
+      const kycResult = await getUserKYC()
+      if (kycResult.error || !kycResult.kyc?.id) {
+        setUploadError("Error al crear la verificación KYC")
+        return
+      }
+
+      // Update local kycData state
+      setKycData(kycResult.kyc)
+
+      // Use the new KYC ID for uploads
+      const newKycId = kycResult.kyc.id
+
+      setUploading(true)
+      setUploadError(null)
+
+      try {
+        // Upload new documents
+        if (selfie) {
+          const selfieFormData = new FormData()
+          selfieFormData.append("file", selfie)
+          selfieFormData.append("type", "selfie")
+          selfieFormData.append("kycId", newKycId)
+          const selfieResult = await uploadDocumentFile(selfieFormData)
+          if (selfieResult.error) throw new Error(selfieResult.error)
+        }
+
+        if (documentPhoto) {
+          const docFormData = new FormData()
+          docFormData.append("file", documentPhoto)
+          docFormData.append("type", "document_front")
+          docFormData.append("kycId", newKycId)
+          const docResult = await uploadDocumentFile(docFormData)
+          if (docResult.error) throw new Error(docResult.error)
+        }
+
+        if (selfieWithDocument) {
+          const selfieDocFormData = new FormData()
+          selfieDocFormData.append("file", selfieWithDocument)
+          selfieDocFormData.append("type", "selfie_with_document")
+          selfieDocFormData.append("kycId", newKycId)
+          const selfieDocResult = await uploadDocumentFile(selfieDocFormData)
+          if (selfieDocResult.error) throw new Error(selfieDocResult.error)
+        }
+
+        await loadUserData()
+        alert("Documentos actualizados exitosamente")
+      } catch (err: any) {
+        setUploadError(err.message || "Error al subir los documentos")
+      } finally {
+        setUploading(false)
+      }
+
       return
     }
 
