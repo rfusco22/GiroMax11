@@ -284,11 +284,14 @@ export async function rejectKYC(
   reason: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log("[v0] Rejecting KYC:", { kycId, reviewedBy, reason })
     await query(`CALL reject_kyc_verification(?, ?, ?)`, [kycId, reviewedBy, reason])
+    console.log("[v0] KYC rejected successfully")
     return { success: true }
   } catch (error) {
     console.error("[v0] Error rejecting KYC:", error)
-    return { success: false, error: "Error al rechazar la verificación" }
+    const errorMessage = error instanceof Error ? error.message : "Error al rechazar la verificación"
+    return { success: false, error: errorMessage }
   }
 }
 

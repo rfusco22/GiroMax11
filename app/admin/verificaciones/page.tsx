@@ -93,15 +93,19 @@ export default function VerificacionesPage() {
       return
     }
 
+    console.log("[v0] handleReject called with:", { kycId: selectedKYC.id, reason: rejectionReason })
     setIsProcessing(true)
     const result = await rejectKYCVerification(selectedKYC.id, rejectionReason)
+    console.log("[v0] Rejection result:", result)
 
     if (result.error) {
+      console.error("[v0] Rejection error:", result.error)
       alert(result.error)
       setIsProcessing(false)
       return
     }
 
+    console.log("[v0] Rejection successful, closing dialog")
     setShowRejectDialog(false)
     setSelectedKYC(null)
     setRejectionReason("")

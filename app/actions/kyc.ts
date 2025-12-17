@@ -231,21 +231,28 @@ export async function approveKYCVerification(kycId: string, notes?: string) {
 
 export async function rejectKYCVerification(kycId: string, reason: string) {
   try {
+    console.log("[v0] rejectKYCVerification called with:", { kycId, reason })
     const session = await getSession()
     if (!session) {
+      console.log("[v0] No session found")
       return { error: "No autenticado" }
     }
 
-    if (session.user.role !== "gerencia") {
+    console.log("[v0] Session user role:", session.user.role)
+    if (session.user.role !== "gerencia" && session.user.role !== "administrador") {
+      console.log("[v0] User not authorized, role:", session.user.role)
       return { error: "No autorizado" }
     }
 
+    console.log("[v0] Calling rejectKYC lib function")
     const result = await rejectKYC(kycId, session.user.id, reason)
 
     if (!result.success) {
+      console.log("[v0] rejectKYC failed:", result.error)
       return { error: result.error }
     }
 
+    console.log("[v0] KYC rejection successful")
     return { success: true }
   } catch (error) {
     console.error("[v0] Error rejecting KYC:", error)
