@@ -42,7 +42,7 @@ export function VerificationStatusBadge() {
         }
       case "rejected":
         return {
-          label: "Rechazado",
+          label: "No Verificado",
           icon: XCircle,
           className: "bg-red-500/20 text-red-400 border-red-500/30",
         }

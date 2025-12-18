@@ -1,6 +1,8 @@
 // Blob Storage Service for Document Uploads
 // Integrates with Vercel Blob or other storage providers
 
+import { put, del } from "@vercel/blob"
+
 interface UploadResult {
   success: boolean
   url?: string
@@ -32,26 +34,16 @@ export class BlobStorageService {
 
   private async uploadToVercelBlob(file: File, documentType: string, userId: string): Promise<UploadResult> {
     try {
-      const formData = new FormData()
-      formData.append("file", file)
+      const filename = `kyc/${userId}/${documentType}_${Date.now()}.${file.name.split(".").pop()}`
 
-      const response = await fetch(`/api/upload?type=${documentType}&userId=${userId}`, {
-        method: "POST",
-        body: formData,
+      const blob = await put(filename, file, {
+        access: "public",
+        addRandomSuffix: true,
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        return {
-          success: false,
-          error: error.message || "Error al subir el archivo",
-        }
-      }
-
-      const data = await response.json()
       return {
         success: true,
-        url: data.url,
+        url: blob.url,
       }
     } catch (error) {
       console.error("[v0] Error uploading to Vercel Blob:", error)
@@ -83,17 +75,7 @@ export class BlobStorageService {
   async deleteDocument(url: string): Promise<{ success: boolean; error?: string }> {
     try {
       if (this.provider === "vercel-blob") {
-        const response = await fetch("/api/upload", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url }),
-        })
-
-        if (!response.ok) {
-          return { success: false, error: "Error al eliminar el archivo" }
-        }
+        await del(url)
       }
 
       return { success: true }

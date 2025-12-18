@@ -436,7 +436,11 @@ export default function MisDatosTab({
             <div className="relative aspect-[4/3] bg-[#2A3254] rounded-lg border-2 border-dashed border-white/10 overflow-hidden">
               {selfiePreview ? (
                 <>
-                  <img src={selfiePreview || "/placeholder.svg"} alt="Selfie" className="h-full w-full object-cover" />
+                  <img
+                    src={selfiePreview || "/placeholder.svg"}
+                    alt="Selfie"
+                    className="h-full w-full object-contain"
+                  />
                   {canEditDocuments && (
                     <button
                       onClick={() => {
@@ -480,7 +484,7 @@ export default function MisDatosTab({
                   <img
                     src={documentPhotoPreview || "/placeholder.svg"}
                     alt="Documento"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                   {canEditDocuments && (
                     <button
@@ -525,7 +529,7 @@ export default function MisDatosTab({
                   <img
                     src={selfieWithDocumentPreview || "/placeholder.svg"}
                     alt="Selfie con Documento"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                   {canEditDocuments && (
                     <button
