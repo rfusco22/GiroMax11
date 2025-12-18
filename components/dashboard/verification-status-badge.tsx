@@ -15,13 +15,10 @@ export function VerificationStatusBadge() {
   }, [])
 
   async function loadStatus() {
-    console.log("[v0] Loading verification status...")
-    const user = await getCurrentUser()
-    console.log("[v0] User loaded:", user)
-    console.log("[v0] KYC Status:", user?.kyc_status)
+    const result = await getCurrentUser()
 
-    if (user) {
-      setStatus(user.kyc_status || "none")
+    if (result.user) {
+      setStatus(result.user.kyc_status || "none")
     }
     setIsLoading(false)
   }
@@ -53,16 +50,12 @@ export function VerificationStatusBadge() {
           className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
         }
       case "rejected":
+      case "none":
+      default:
         return {
           label: "No Verificado",
           icon: XCircle,
           className: "bg-red-500/20 text-red-400 border-red-500/30",
-        }
-      default:
-        return {
-          label: "No Verificado",
-          icon: AlertCircle,
-          className: "bg-gray-500/20 text-gray-400 border-gray-500/30",
         }
     }
   }
